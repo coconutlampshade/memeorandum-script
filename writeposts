@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+import requests
+from bs4 import BeautifulSoup
+import anthropic
+import os
+import sys
+from urllib.parse import urlparse
+
+# Get URLs from stdin (one per line)
+print("Enter URLs (one per line, then Ctrl+D when done):\n")
+urls = []
+try:
+    for line in sys.stdin:
+        line = line.strip()
+        if line and line.startswith('http'):
+            urls.append(line)
+except EOFError:
+    pass
+
+if not urls:
+    print("No valid URLs provided.")
+    exit()
+
+print(f"\nProcessing {len(urls)} URLs...\n")
+
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
+
+# Initialize Claude API
+api_key = os.environ.get('ANTHROPIC_API_KEY')
+if not api_key:
+    print("Error: ANTHROPIC_API_KEY environment variable not set")
+    exit(1)
+
+client = anthropic.Anthropic(api_key=api_key)
+
+# Process each URL
+for idx, url in enumerate(urls, 1):
+    print(f"\n{'='*80}")
+    print(f"Generating post {idx}/{len(urls)}")
+    print(f"{'='*80}\n")
+
+    # Fetch article content
+    try:
+        article_response = requests.get(url, headers=headers, timeout=10)
+        article_soup = BeautifulSoup(article_response.text, 'html.parser')
+
+        # Extract title
+        title_tag = article_soup.find('title')
+        title = title_tag.get_text(strip=True) if title_tag else url
+
+        # Extract main text content
+        for tag in article_soup(['script', 'style', 'nav', 'header', 'footer', 'aside']):
+            tag.decompose()
+
+        article_text = article_soup.get_text(separator=' ', strip=True)[:5000]  # Limit to first 5000 chars
+
+    except Exception as e:
+        print(f"Warning: Could not fetch article content: {e}")
+        title = url
+        article_text = ""
+
+    # Extract source name from URL
+    domain = urlparse(url).netloc
+    source_name = domain.replace('www.', '').split('.')[0].title()
+    common_sources = {
+        'nytimes': 'the New York Times',
+        'washingtonpost': 'the Washington Post',
+        'cnn': 'CNN',
+        'bbc': 'BBC',
+        'theguardian': 'the Guardian',
+        'reuters': 'Reuters',
+        'apnews': 'the Associated Press',
+        'politico': 'Politico',
+        'theatlantic': 'the Atlantic',
+        'npr': 'NPR',
+        'nbcnews': 'NBC News',
+        'cbsnews': 'CBS News',
+        'abcnews': 'ABC News',
+        'axios': 'Axios',
+        'thehill': 'The Hill',
+        'huffpost': 'HuffPost',
+        'vox': 'Vox',
+        'slate': 'Slate',
+        'salon': 'Salon',
+        'motherjones': 'Mother Jones',
+        'thedailybeast': 'The Daily Beast',
+        'rollingstone': 'Rolling Stone',
+        'vanityfair': 'Vanity Fair',
+        'newyorker': 'The New Yorker',
+        'wired': 'Wired',
+        'arstechnica': 'Ars Technica',
+        'theverge': 'The Verge',
+        'techcrunch': 'TechCrunch'
+    }
+    source_name = common_sources.get(domain.replace('www.', '').split('.')[0].lower(), source_name)
+
+    # Generate Boingboing-style post with Claude
+    prompt = f"""Based on this article, write a ~250 word blog post suitable for Boingboing.net. The post should:
+
+1. Mention the source name naturally somewhere in the text (e.g., "reports {source_name}" or "according to {source_name}")
+2. Do NOT include URLs or hyperlinks in the post text itself
+3. Be engaging and conversational in Boingboing's style
+4. Be approximately 250 words
+5. Focus on what's interesting or notable about the story
+
+Article Title: {title}
+Article Content: {article_text}
+Source Name: {source_name}
+
+After the post, provide 5 different headline options in sentence case (not title case). Each headline should be engaging and Boingboing-appropriate.
+
+Format your response EXACTLY as:
+POST:
+[the 250-word post here - no URLs in the text]
+
+HEADLINES:
+1. [headline option 1]
+2. [headline option 2]
+3. [headline option 3]
+4. [headline option 4]
+5. [headline option 5]"""
+
+    message = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=1500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    print(message.content[0].text)
+    print(f"\nSource: {url}")
+    print(f"\n{'='*80}\n")
