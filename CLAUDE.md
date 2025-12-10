@@ -63,3 +63,11 @@ To keep posts sounding human, follow these rules:
 - Let prose have texture—short sentences, longer ones, fragments
 - Trust the reader to understand significance without being told
 - State facts directly instead of attributing to vague "experts"
+
+### Sentence Rhythm and Flow
+- Avoid too many short, punchy sentences in a row—it becomes exhausting to read
+- Mix sentence lengths: follow a short sentence with a longer one that breathes
+- Use conjunctions (and, but, so, because) to connect ideas rather than always starting new sentences
+- Let some paragraphs unspool a bit—not everything needs to be staccato
+- Occasional longer sentences with clauses and asides create a more natural, conversational rhythm
+- Read it back: if it sounds like a series of punches, smooth it out
