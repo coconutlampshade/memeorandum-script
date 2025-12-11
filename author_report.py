@@ -114,6 +114,11 @@ def main():
     print("=" * 70)
     print()
 
+    # Build a set of post IDs from this month
+    month_post_ids = set()
+    for post in posts_data.get("posts", []):
+        month_post_ids.add(post["ID"])
+
     # Build views per author from stats
     results = []
     for author in authors_data:
@@ -129,25 +134,43 @@ def main():
         if num_posts == 0:
             continue
 
-        # Use total views from stats API
-        total_views = author["views"]
-        avg_views = total_views / num_posts
+        # Total views from stats API (includes all posts, new and old)
+        all_views = author["views"]
 
-        results.append((name, num_posts, total_views, avg_views))
+        # Views from posts written this month only
+        month_views = sum(p["views"] for p in author["posts"] if p["id"] in month_post_ids)
 
-    # Sort by average views descending
-    results.sort(key=lambda x: x[3], reverse=True)
+        # Average views per new post
+        avg_new = month_views / num_posts
 
-    header = "{:<25} {:>8} {:>14} {:>16}".format("Author", "Posts", "Total Views", "Avg Views/Post")
+        # Evergreen score: all views divided by new posts written
+        evergreen = all_views / num_posts
+
+        results.append((name, num_posts, month_views, avg_new, all_views, evergreen))
+
+    # Sort by evergreen score descending
+    results.sort(key=lambda x: x[5], reverse=True)
+
+    header = "{:<20} {:>6} {:>12} {:>10} {:>12} {:>12}".format(
+        "Author", "Posts", "New Views", "Avg/New", "All Views", "Evergreen"
+    )
     print(header)
-    print("-" * 70)
+    print("-" * 80)
 
-    for name, num_posts, total_views, avg_views in results:
-        row = "{:<25} {:>8} {:>14,} {:>16,.0f}".format(name, num_posts, total_views, avg_views)
+    for name, num_posts, month_views, avg_new, all_views, evergreen in results:
+        row = "{:<20} {:>6} {:>12,} {:>10,.0f} {:>12,} {:>12,.0f}".format(
+            name, num_posts, month_views, avg_new, all_views, evergreen
+        )
         print(row)
 
     print()
-    print("=" * 70)
+    print("=" * 80)
+    print()
+    print("Posts: Articles written this month")
+    print("New Views: Views on posts written this month")
+    print("Avg/New: Average views per new post")
+    print("All Views: Total views across all posts (new + evergreen)")
+    print("Evergreen: All views divided by new posts (higher = stronger back catalog)")
 
 if __name__ == "__main__":
     main()
