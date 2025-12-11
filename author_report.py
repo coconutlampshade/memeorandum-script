@@ -172,5 +172,37 @@ def main():
     print("All Views: Total views across all posts (new + evergreen)")
     print("Evergreen: All views divided by new posts (higher = stronger back catalog)")
 
+    # Collect all posts with views from stats data
+    all_posts_with_views = []
+    post_id_to_author = {}
+    for post in posts_data.get("posts", []):
+        post_id_to_author[post["ID"]] = post.get("author", {}).get("name", "Unknown")
+
+    for author in authors_data:
+        author_name = author["name"]
+        if author_name in ["Boing Boing", "Boing Boing's Shop"]:
+            continue
+        for post in author["posts"]:
+            if post["id"] in month_post_ids:
+                all_posts_with_views.append({
+                    "title": post["title"],
+                    "views": post["views"],
+                    "author": author_name
+                })
+
+    # Sort by views and get top 3
+    all_posts_with_views.sort(key=lambda x: x["views"], reverse=True)
+    top_posts = all_posts_with_views[:3]
+
+    if top_posts:
+        print()
+        print("TOP 3 POSTS THIS MONTH")
+        print("-" * 80)
+        for i, post in enumerate(top_posts, 1):
+            title = post["title"]
+            if len(title) > 50:
+                title = title[:47] + "..."
+            print("{}. {:,} views - {} ({})".format(i, post["views"], title, post["author"]))
+
 if __name__ == "__main__":
     main()
